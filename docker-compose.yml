@@ -1,0 +1,201 @@
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: ti-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ti_management}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=256MB"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - ti_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./services/api_gateway
+      dockerfile: Dockerfile
+    container_name: ti-api-gateway
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-ti_management}
+      EQUIPOS_SERVICE_URL: http://equipos-service:8001
+      PROVEEDORES_SERVICE_URL: http://proveedores-service:8002
+      MANTENIMIENTO_SERVICE_URL: http://mantenimiento-service:8003
+      REPORTES_SERVICE_URL: http://reportes-service:8004
+      AGENT_SERVICE_URL: http://agent-service:8005
+    ports:
+      - "${API_GATEWAY_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      equipos-service:
+        condition: service_started
+      proveedores-service:
+        condition: service_started
+      mantenimiento-service:
+        condition: service_started
+      reportes-service:
+        condition: service_started
+      agent-service:
+        condition: service_started
+    networks:
+      - ti_network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Servicio de Equipos
+  equipos-service:
+    build:
+      context: ./services/equipos_service
+      dockerfile: Dockerfile
+    container_name: ti-equipos-service
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-ti_management}
+    ports:
+      - "${EQUIPOS_PORT:-8001}:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ti_network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Servicio de Proveedores
+  proveedores-service:
+    build:
+      context: ./services/proveedores_service
+      dockerfile: Dockerfile
+    container_name: ti-proveedores-service
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-ti_management}
+    ports:
+      - "${PROVEEDORES_PORT:-8002}:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ti_network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8002/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Servicio de Mantenimiento
+  mantenimiento-service:
+    build:
+      context: ./services/mantenimiento_service
+      dockerfile: Dockerfile
+    container_name: ti-mantenimiento-service
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-ti_management}
+    ports:
+      - "${MANTENIMIENTO_PORT:-8003}:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ti_network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8003/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Servicio de Reportes
+  reportes-service:
+    build:
+      context: ./services/reportes_service
+      dockerfile: Dockerfile
+    container_name: ti-reportes-service
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-ti_management}
+    ports:
+      - "${REPORTES_PORT:-8004}:8004"
+    volumes:
+      - reportes_data:/app/reportes
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ti_network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8004/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Servicio de Agentes
+  agent-service:
+    build:
+      context: ./services/agent_service
+      dockerfile: Dockerfile
+    container_name: ti-agent-service
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-ti_management}
+    ports:
+      - "${AGENT_PORT:-8005}:8005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ti_network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8005/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Streamlit
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ti-frontend
+    environment:
+      API_GATEWAY_URL: http://api-gateway:8000
+    ports:
+      - "${FRONTEND_PORT:-8501}:8501"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    networks:
+      - ti_network
+    healthcheck:
+      test: [ "CMD-SHELL", "curl --fail http://localhost:8501/_stcore/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  reportes_data:
+    driver: local
+
+networks:
+  ti_network:
+    driver: bridge

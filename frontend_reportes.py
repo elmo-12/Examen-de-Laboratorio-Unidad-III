@@ -1,0 +1,380 @@
+import streamlit as st
+import requests
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import os
+from datetime import datetime
+
+st.set_page_config(page_title="Reportes y Análisis", page_icon="📊", layout="wide")
+
+API_URL = os.getenv("API_GATEWAY_URL", "http://api-gateway:8000")
+
+st.title("📊 Reportes y Análisis")
+st.markdown("---")
+
+# Funciones auxiliares
+def get_dashboard_data():
+    try:
+        response = requests.get(f"{API_URL}/api/reportes/dashboard", timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except:
+        return None
+
+def get_equipos_por_ubicacion():
+    try:
+        response = requests.get(f"{API_URL}/api/reportes/equipos-por-ubicacion", timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        return []
+    except:
+        return []
+
+def get_equipos_por_estado():
+    try:
+        response = requests.get(f"{API_URL}/api/reportes/equipos-por-estado", timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        return []
+    except:
+        return []
+
+def get_equipos_por_categoria():
+    try:
+        response = requests.get(f"{API_URL}/api/reportes/equipos-por-categoria", timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        return []
+    except:
+        return []
+
+def get_costos_mantenimiento(year=None):
+    params = {"year": year} if year else {}
+    try:
+        response = requests.get(f"{API_URL}/api/reportes/costos-mantenimiento", params=params, timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        return []
+    except:
+        return []
+
+def get_equipos_antiguedad():
+    try:
+        response = requests.get(f"{API_URL}/api/reportes/equipos-antiguedad", timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        return []
+    except:
+        return []
+
+# Tabs principales
+tab1, tab2, tab3, tab4 = st.tabs(["📈 Dashboard", "📊 Gráficos", "📄 Exportar", "🔍 Análisis Avanzado"])
+
+with tab1:
+    st.subheader("Dashboard General")
+    
+    dashboard = get_dashboard_data()
+    
+    if dashboard:
+        # Métricas principales
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric(
+                label="📦 Total Equipos",
+                value=dashboard.get("total_equipos", 0)
+            )
+        
+        with col2:
+            st.metric(
+                label="✅ Equipos Operativos",
+                value=dashboard.get("equipos_operativos", 0)
+            )
+        
+        with col3:
+            st.metric(
+                label="🔧 En Reparación",
+                value=dashboard.get("equipos_reparacion", 0)
+            )
+        
+        with col4:
+            disponibilidad = dashboard.get("tasa_disponibilidad", 0)
+            st.metric(
+                label="📊 Disponibilidad",
+                value=f"{disponibilidad}%",
+                delta=f"{disponibilidad - 95:.1f}%"
+            )
+        
+        st.markdown("---")
+        
+        # Segunda fila
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            valor = dashboard.get("valor_inventario", 0)
+            st.metric(
+                label="💰 Valor Inventario",
+                value=f"${valor:,.2f}"
+            )
+        
+        with col2:
+            st.metric(
+                label="🔧 Mantenimientos (Mes)",
+                value=dashboard.get("mantenimientos_mes", 0)
+            )
+        
+        with col3:
+            costo = dashboard.get("costo_mantenimiento_mes", 0)
+            st.metric(
+                label="💵 Costo Mantenim. (Mes)",
+                value=f"${costo:,.2f}"
+            )
+    else:
+        st.error("No se pudieron cargar los datos del dashboard")
+
+with tab2:
+    st.subheader("Gráficos Estadísticos")
+    
+    # Equipos por ubicación
+    st.markdown("### 📍 Equipos por Ubicación")
+    data_ubicacion = get_equipos_por_ubicacion()
+    
+    if data_ubicacion:
+        df_ubicacion = pd.DataFrame(data_ubicacion)
+        
+        fig1 = px.bar(
+            df_ubicacion,
+            x='ubicacion',
+            y='cantidad',
+            title='Distribución de Equipos por Ubicación',
+            labels={'ubicacion': 'Ubicación', 'cantidad': 'Cantidad'},
+            color='cantidad',
+            color_continuous_scale='Blues'
+        )
+        fig1.update_layout(showlegend=False)
+        st.plotly_chart(fig1, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # Equipos por estado
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 🟢 Equipos por Estado")
+        data_estado = get_equipos_por_estado()
+        
+        if data_estado:
+            df_estado = pd.DataFrame(data_estado)
+            
+            fig2 = px.pie(
+                df_estado,
+                values='cantidad',
+                names='estado',
+                title='Estado Operativo de Equipos',
+                color_discrete_sequence=px.colors.qualitative.Set2
+            )
+            st.plotly_chart(fig2, use_container_width=True)
+    
+    with col2:
+        st.markdown("### 📦 Equipos por Categoría")
+        data_categoria = get_equipos_por_categoria()
+        
+        if data_categoria:
+            df_categoria = pd.DataFrame(data_categoria)
+            
+            fig3 = px.pie(
+                df_categoria,
+                values='cantidad',
+                names='categoria',
+                title='Distribución por Categoría',
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            st.plotly_chart(fig3, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # Costos de mantenimiento
+    st.markdown("### 💵 Costos de Mantenimiento")
+    
+    year_selected = st.selectbox("Seleccionar Año", [2024, 2023, 2022])
+    data_costos = get_costos_mantenimiento(year=year_selected)
+    
+    if data_costos:
+        df_costos = pd.DataFrame(data_costos)
+        
+        if not df_costos.empty:
+            # Agrupar por mes
+            df_costos_mes = df_costos.groupby('mes')['total_costo'].sum().reset_index()
+            
+            fig4 = px.line(
+                df_costos_mes,
+                x='mes',
+                y='total_costo',
+                title=f'Costos de Mantenimiento por Mes - {year_selected}',
+                labels={'mes': 'Mes', 'total_costo': 'Costo Total ($)'},
+                markers=True
+            )
+            st.plotly_chart(fig4, use_container_width=True)
+            
+            # Gráfico por tipo
+            if 'tipo' in df_costos.columns:
+                df_costos_tipo = df_costos.groupby('tipo')['total_costo'].sum().reset_index()
+                
+                fig5 = px.bar(
+                    df_costos_tipo,
+                    x='tipo',
+                    y='total_costo',
+                    title='Costos por Tipo de Mantenimiento',
+                    labels={'tipo': 'Tipo', 'total_costo': 'Costo Total ($)'},
+                    color='total_costo',
+                    color_continuous_scale='Reds'
+                )
+                st.plotly_chart(fig5, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # Antigüedad de equipos
+    st.markdown("### ⏰ Antigüedad de Equipos")
+    data_antiguedad = get_equipos_antiguedad()
+    
+    if data_antiguedad:
+        df_antiguedad = pd.DataFrame(data_antiguedad)
+        
+        fig6 = px.bar(
+            df_antiguedad,
+            x='rango_antiguedad',
+            y='cantidad',
+            title='Distribución de Equipos por Antigüedad',
+            labels={'rango_antiguedad': 'Antigüedad', 'cantidad': 'Cantidad'},
+            color='cantidad',
+            color_continuous_scale='Oranges'
+        )
+        st.plotly_chart(fig6, use_container_width=True)
+
+with tab3:
+    st.subheader("Exportar Reportes")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 📄 Exportar a PDF")
+        st.write("Genera un reporte completo en formato PDF")
+        
+        tipo_reporte_pdf = st.selectbox(
+            "Tipo de Reporte (PDF)",
+            ["equipos", "mantenimientos", "proveedores"]
+        )
+        
+        if st.button("📥 Generar PDF", use_container_width=True):
+            with st.spinner("Generando PDF..."):
+                try:
+                    response = requests.post(
+                        f"{API_URL}/api/reportes/export/pdf",
+                        json={"type": tipo_reporte_pdf},
+                        timeout=30
+                    )
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        st.success(f"✅ PDF generado: {result.get('filename', 'N/A')}")
+                        st.info("El archivo se guardó en el servidor")
+                    else:
+                        st.error("Error al generar PDF")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    
+    with col2:
+        st.markdown("### 📊 Exportar a Excel")
+        st.write("Genera un reporte detallado en formato Excel")
+        
+        tipo_reporte_excel = st.selectbox(
+            "Tipo de Reporte (Excel)",
+            ["equipos", "mantenimientos", "proveedores"]
+        )
+        
+        if st.button("📥 Generar Excel", use_container_width=True):
+            with st.spinner("Generando Excel..."):
+                try:
+                    response = requests.post(
+                        f"{API_URL}/api/reportes/export/excel",
+                        json={"type": tipo_reporte_excel},
+                        timeout=30
+                    )
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        st.success(f"✅ Excel generado: {result.get('filename', 'N/A')}")
+                        st.info("El archivo se guardó en el servidor")
+                    else:
+                        st.error("Error al generar Excel")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+with tab4:
+    st.subheader("🔍 Análisis Avanzado")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 📊 Valor por Categoría")
+        data_categoria = get_equipos_por_categoria()
+        
+        if data_categoria:
+            df_cat = pd.DataFrame(data_categoria)
+            
+            if 'valor_total' in df_cat.columns:
+                fig = go.Figure(data=[go.Bar(
+                    x=df_cat['categoria'],
+                    y=df_cat['valor_total'],
+                    text=df_cat['valor_total'].apply(lambda x: f'${x:,.0f}'),
+                    textposition='auto',
+                )])
+                
+                fig.update_layout(
+                    title='Valor Total por Categoría',
+                    xaxis_title='Categoría',
+                    yaxis_title='Valor ($)',
+                    showlegend=False
+                )
+                st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        st.markdown("### 🔧 Eficiencia de Mantenimiento")
+        dashboard = get_dashboard_data()
+        
+        if dashboard:
+            disponibilidad = dashboard.get("tasa_disponibilidad", 0)
+            
+            fig = go.Figure(go.Indicator(
+                mode="gauge+number+delta",
+                value=disponibilidad,
+                domain={'x': [0, 1], 'y': [0, 1]},
+                title={'text': "Tasa de Disponibilidad"},
+                delta={'reference': 95},
+                gauge={
+                    'axis': {'range': [None, 100]},
+                    'bar': {'color': "darkblue"},
+                    'steps': [
+                        {'range': [0, 70], 'color': "lightgray"},
+                        {'range': [70, 90], 'color': "yellow"},
+                        {'range': [90, 100], 'color': "lightgreen"}
+                    ],
+                    'threshold': {
+                        'line': {'color': "red", 'width': 4},
+                        'thickness': 0.75,
+                        'value': 95
+                    }
+                }
+            ))
+            
+            st.plotly_chart(fig, use_container_width=True)
+    
+    st.markdown("---")
+    st.markdown("### 📈 Tendencias")
+    st.info("💡 Análisis predictivo y tendencias estarán disponibles en próximas versiones")
+
+# Footer
+st.markdown("---")
+st.caption(f"⏰ Última actualización: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")

@@ -1,0 +1,151 @@
+erDiagram
+    USUARIOS {
+        int id PK
+        string username UK
+        string email UK
+        string password_hash
+        string rol
+        string nombre_completo
+        boolean activo
+        timestamp fecha_creacion
+        timestamp ultima_conexion
+    }
+
+    CATEGORIAS_EQUIPOS {
+        int id PK
+        string nombre UK
+        text descripcion
+        int vida_util_anos
+        timestamp fecha_creacion
+    }
+
+    UBICACIONES {
+        int id PK
+        string edificio
+        string piso
+        string aula_oficina
+        text descripcion
+        int responsable_id FK
+        boolean activo
+        timestamp fecha_creacion
+    }
+
+    PROVEEDORES {
+        int id PK
+        string razon_social
+        string ruc UK
+        text direccion
+        string telefono
+        string email
+        string contacto_nombre
+        string contacto_telefono
+        string sitio_web
+        decimal calificacion
+        boolean activo
+        timestamp fecha_registro
+        text notas
+    }
+
+    CONTRATOS {
+        int id PK
+        int proveedor_id FK
+        string numero_contrato UK
+        string tipo
+        date fecha_inicio
+        date fecha_fin
+        decimal monto_total
+        string estado
+        string archivo_url
+        text descripcion
+        timestamp fecha_creacion
+    }
+
+    EQUIPOS {
+        int id PK
+        string codigo_inventario UK
+        int categoria_id FK
+        string nombre
+        string marca
+        string modelo
+        string numero_serie UK
+        jsonb especificaciones
+        int proveedor_id FK
+        date fecha_compra
+        decimal costo_compra
+        date fecha_garantia_fin
+        int ubicacion_actual_id FK
+        string estado_operativo
+        string estado_fisico
+        int asignado_a_id FK
+        text notas
+        string imagen_url
+        timestamp fecha_registro
+        timestamp fecha_ultima_actualizacion
+    }
+
+    MOVIMIENTOS_EQUIPOS {
+        int id PK
+        int equipo_id FK
+        int ubicacion_origen_id FK
+        int ubicacion_destino_id FK
+        int usuario_responsable_id FK
+        timestamp fecha_movimiento
+        text motivo
+        text observaciones
+    }
+
+    MANTENIMIENTOS {
+        int id PK
+        int equipo_id FK
+        string tipo
+        date fecha_programada
+        date fecha_realizada
+        int tecnico_id FK
+        int proveedor_id FK
+        text descripcion
+        text problema_reportado
+        text solucion_aplicada
+        decimal costo
+        decimal tiempo_fuera_servicio_horas
+        string estado
+        string prioridad
+        jsonb partes_reemplazadas
+        text observaciones
+        timestamp fecha_creacion
+    }
+
+    NOTIFICACIONES {
+        int id PK
+        string tipo
+        string titulo
+        text mensaje
+        int usuario_id FK
+        int equipo_id FK
+        int mantenimiento_id FK
+        boolean leida
+        timestamp fecha_creacion
+        timestamp fecha_lectura
+    }
+
+    %% Relaciones
+    USUARIOS ||--o{ UBICACIONES : "es_responsable_de"
+    USUARIOS ||--o{ EQUIPOS : "tiene_asignado"
+    USUARIOS ||--o{ MOVIMIENTOS_EQUIPOS : "autoriza"
+    USUARIOS ||--o{ MANTENIMIENTOS : "realiza"
+    USUARIOS ||--o{ NOTIFICACIONES : "recibe"
+
+    CATEGORIAS_EQUIPOS ||--o{ EQUIPOS : "clasifica"
+
+    UBICACIONES ||--o{ EQUIPOS : "aloja_actualmente"
+    UBICACIONES ||--o{ MOVIMIENTOS_EQUIPOS : "origen"
+    UBICACIONES ||--o{ MOVIMIENTOS_EQUIPOS : "destino"
+
+    PROVEEDORES ||--o{ CONTRATOS : "tiene"
+    PROVEEDORES ||--o{ EQUIPOS : "suministra"
+    PROVEEDORES ||--o{ MANTENIMIENTOS : "presta_servicio"
+
+    EQUIPOS ||--o{ MOVIMIENTOS_EQUIPOS : "registra"
+    EQUIPOS ||--o{ MANTENIMIENTOS : "recibe"
+    EQUIPOS ||--o{ NOTIFICACIONES : "relacionado_con"
+
+    MANTENIMIENTOS ||--o{ NOTIFICACIONES : "genera"

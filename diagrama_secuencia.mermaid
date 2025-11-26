@@ -1,0 +1,102 @@
+sequenceDiagram
+    autonumber
+    actor Usuario as 👤 Usuario/Técnico
+    participant FE as 🖥️ Frontend<br/>Streamlit
+    participant GW as 🌐 API Gateway<br/>(Puerto 8000)
+    participant MS as 🔧 Mantenimiento<br/>Service
+    participant EQ as 📦 Equipos<br/>Service
+    participant AG as 🤖 Agent<br/>Service
+    participant DB as 🗄️ PostgreSQL<br/>Database
+
+    rect rgb(240, 248, 255)
+        Note over Usuario,DB: 📝 FASE 1: Registro de Mantenimiento Correctivo
+        Usuario->>+FE: Accede a página de Mantenimiento
+        FE->>FE: Carga formulario
+        FE->>+GW: GET /api/equipos (lista equipos)
+        GW->>+EQ: Solicita lista de equipos
+        EQ->>+DB: SELECT * FROM equipos
+        DB-->>-EQ: Retorna equipos
+        EQ-->>-GW: Envía lista de equipos
+        GW-->>-FE: Retorna equipos JSON
+        FE-->>Usuario: Muestra formulario con equipos
+    end
+
+    rect rgb(255, 250, 240)
+        Note over Usuario,DB: 📝 FASE 2: Usuario Completa Formulario
+        Usuario->>+FE: Selecciona equipo "LAP-2024-001"<br/>Tipo: Correctivo<br/>Problema: Pantalla rota
+        Usuario->>FE: Hace clic en "Guardar"
+        FE->>FE: Valida datos del formulario
+    end
+
+    rect rgb(240, 255, 240)
+        Note over Usuario,DB: 💾 FASE 3: Envío y Procesamiento
+        FE->>+GW: POST /api/mantenimientos<br/>{equipo_id, tipo, descripción...}
+        GW->>GW: Valida autenticación
+        GW->>+MS: POST /mantenimientos
+        MS->>MS: Valida datos de entrada
+        
+        MS->>+DB: BEGIN TRANSACTION
+        MS->>DB: INSERT INTO mantenimientos
+        DB-->>MS: mantenimiento_id = 125
+        
+        alt Mantenimiento Correctivo
+            MS->>DB: UPDATE equipos<br/>SET estado_operativo = 'en_reparacion'<br/>WHERE id = equipo_id
+            DB-->>MS: Equipo actualizado
+        end
+        
+        MS->>DB: COMMIT TRANSACTION
+        DB-->>-MS: Transacción exitosa
+        MS-->>-GW: {id: 125, message: "Creado"}
+        GW-->>-FE: 200 OK - Mantenimiento registrado
+        FE-->>-Usuario: ✅ Muestra mensaje de éxito
+    end
+
+    rect rgb(255, 245, 245)
+        Note over Usuario,DB: 🤖 FASE 4: Procesamiento Automático de Agentes
+        
+        Note right of AG: Agente ejecuta cada 24h<br/>o manualmente
+        
+        AG->>+DB: SELECT mantenimientos<br/>WHERE fecha_programada IN próximos 7 días
+        DB-->>-AG: Lista de mantenimientos próximos
+        
+        loop Para cada mantenimiento próximo
+            AG->>AG: Calcula días restantes
+            AG->>+DB: INSERT INTO notificaciones<br/>{tipo, título, mensaje...}
+            DB-->>-AG: Notificación creada
+        end
+        
+        AG->>+DB: SELECT equipos<br/>WHERE años_uso >= vida_útil
+        DB-->>-AG: Equipos obsoletos
+        
+        loop Para cada equipo obsoleto
+            AG->>+DB: INSERT INTO notificaciones<br/>{tipo: 'equipo_obsoleto'...}
+            DB-->>-AG: Notificación creada
+        end
+    end
+
+    rect rgb(248, 240, 255)
+        Note over Usuario,DB: 🔔 FASE 5: Visualización de Notificaciones
+        Usuario->>+FE: Accede al Dashboard
+        FE->>+GW: GET /api/agents/notificaciones
+        GW->>+AG: GET /notificaciones?leida=false
+        AG->>+DB: SELECT * FROM notificaciones<br/>WHERE leida = false
+        DB-->>-AG: Lista de notificaciones (10)
+        AG-->>-GW: Retorna notificaciones
+        GW-->>-FE: JSON con notificaciones
+        FE-->>-Usuario: 🔔 Muestra 10 notificaciones<br/>en sidebar
+    end
+
+    rect rgb(255, 255, 240)
+        Note over Usuario,DB: 📊 FASE 6: Generación de Reportes
+        Usuario->>+FE: Solicita reporte de costos
+        FE->>+GW: GET /api/reportes/costos-mantenimiento
+        GW->>+MS: GET /estadisticas
+        MS->>+DB: SELECT tipo, SUM(costo)<br/>FROM mantenimientos<br/>GROUP BY tipo
+        DB-->>-MS: Estadísticas de costos
+        MS-->>-GW: JSON con datos
+        GW-->>-FE: Datos de costos
+        FE->>FE: Genera gráficos con Plotly
+        FE-->>-Usuario: 📊 Muestra dashboard<br/>con gráficos interactivos
+    end
+
+    Note over Usuario,DB: ✅ Proceso Completado Exitosamente

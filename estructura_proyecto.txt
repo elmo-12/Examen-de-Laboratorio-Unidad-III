@@ -1,0 +1,175 @@
+sistema-gestion-ti/
+│
+├── README.md                          # Documentación principal
+├── docker-compose.yml                 # Orquestación de servicios
+├── .env.example                       # Variables de entorno ejemplo
+├── .env                              # Variables de entorno (no incluir en git)
+├── .gitignore                        # Archivos a ignorar por git
+│
+├── database/
+│   └── schema.sql                    # Esquema de base de datos PostgreSQL
+│
+├── frontend/                          # Aplicación Streamlit
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── app.py                        # Página principal
+│   └── pages/
+│       ├── 1_📦_Equipos.py
+│       ├── 2_🏢_Proveedores.py
+│       ├── 3_🔧_Mantenimiento.py
+│       └── 4_📊_Reportes.py
+│
+├── services/
+│   ├── api_gateway/                  # API Gateway (Puerto 8000)
+│   │   ├── Dockerfile
+│   │   ├── requirements.txt
+│   │   └── main.py
+│   │
+│   ├── equipos_service/              # Servicio de Equipos (Puerto 8001)
+│   │   ├── Dockerfile
+│   │   ├── requirements.txt
+│   │   └── main.py
+│   │
+│   ├── proveedores_service/          # Servicio de Proveedores (Puerto 8002)
+│   │   ├── Dockerfile
+│   │   ├── requirements.txt
+│   │   └── main.py
+│   │
+│   ├── mantenimiento_service/        # Servicio de Mantenimiento (Puerto 8003)
+│   │   ├── Dockerfile
+│   │   ├── requirements.txt
+│   │   └── main.py
+│   │
+│   ├── reportes_service/             # Servicio de Reportes (Puerto 8004)
+│   │   ├── Dockerfile
+│   │   ├── requirements.txt
+│   │   └── main.py
+│   │
+│   └── agent_service/                # Servicio de Agentes (Puerto 8005)
+│       ├── Dockerfile
+│       ├── requirements.txt
+│       └── main.py
+│
+├── scripts/                          # Scripts de utilidad
+│   ├── init_db.py                   # Inicialización de base de datos
+│   ├── backup_db.sh                 # Backup de base de datos
+│   └── restore_db.sh                # Restauración de base de datos
+│
+└── docs/                            # Documentación adicional
+    ├── API_DOCUMENTATION.md
+    ├── ARCHITECTURE.md
+    ├── DEPLOYMENT.md
+    └── USER_GUIDE.md
+
+RESUMEN DE SERVICIOS:
+═══════════════════════════════════════════════════════════════
+
+📦 FRONTEND (Streamlit)
+   Puerto: 8501
+   URL: http://localhost:8501
+   Función: Interfaz de usuario web
+
+🌐 API GATEWAY
+   Puerto: 8000
+   URL: http://localhost:8000
+   Función: Punto de entrada único, enrutamiento de peticiones
+   Docs: http://localhost:8000/docs
+
+📦 EQUIPOS SERVICE
+   Puerto: 8001
+   Función: Gestión de inventario de equipos
+   - CRUD de equipos
+   - Gestión de ubicaciones
+   - Historial de movimientos
+
+🏢 PROVEEDORES SERVICE
+   Puerto: 8002
+   Función: Gestión de proveedores y contratos
+   - CRUD de proveedores
+   - Gestión de contratos
+   - Historial de compras
+
+🔧 MANTENIMIENTO SERVICE
+   Puerto: 8003
+   Función: Gestión de mantenimientos
+   - CRUD de mantenimientos
+   - Calendario de mantenimientos
+   - Estadísticas de costos
+
+📊 REPORTES SERVICE
+   Puerto: 8004
+   Función: Generación de reportes y análisis
+   - Dashboard de métricas
+   - Gráficos estadísticos
+   - Exportación PDF/Excel
+
+🤖 AGENT SERVICE
+   Puerto: 8005
+   Función: Agentes inteligentes de automatización
+   - Recordatorios de mantenimiento
+   - Alertas de obsolescencia
+   - Notificaciones de garantías
+   - Análisis de costos
+
+🗄️ POSTGRESQL
+   Puerto: 5432
+   Base de datos: ti_management
+   Usuario: postgres
+
+═══════════════════════════════════════════════════════════════
+
+COMANDOS ÚTILES:
+────────────────
+
+# Iniciar todos los servicios
+docker-compose up -d
+
+# Ver logs de un servicio específico
+docker-compose logs -f <service-name>
+
+# Reiniciar un servicio
+docker-compose restart <service-name>
+
+# Detener todos los servicios
+docker-compose down
+
+# Detener y eliminar volúmenes
+docker-compose down -v
+
+# Reconstruir servicios
+docker-compose build --no-cache
+
+# Escalar un servicio
+docker-compose up -d --scale equipos-service=3
+
+# Ver estado de servicios
+docker-compose ps
+
+# Acceder a un contenedor
+docker-compose exec <service-name> /bin/bash
+
+# Backup de base de datos
+docker-compose exec postgres pg_dump -U postgres ti_management > backup.sql
+
+# Restaurar base de datos
+docker-compose exec -T postgres psql -U postgres ti_management < backup.sql
+
+═══════════════════════════════════════════════════════════════
+
+ENDPOINTS PRINCIPALES:
+─────────────────────
+
+API Gateway: http://localhost:8000
+├── /api/equipos
+├── /api/proveedores
+├── /api/mantenimientos
+├── /api/reportes
+└── /api/agents
+
+Frontend: http://localhost:8501
+
+Documentación API: http://localhost:8000/docs
+
+Health Check: http://localhost:8000/health
+
+═══════════════════════════════════════════════════════════════

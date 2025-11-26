@@ -1,0 +1,96 @@
+graph LR
+    subgraph "Usuario"
+        U[👤 Usuario Web<br/>Navegador]
+    end
+
+    subgraph "Frontend Layer - Puerto 8501"
+        ST[🖥️ Streamlit App<br/>━━━━━━━━━━━<br/>📊 Dashboard<br/>📦 Equipos<br/>🏢 Proveedores<br/>🔧 Mantenimiento<br/>📈 Reportes]
+    end
+
+    subgraph "API Gateway - Puerto 8000"
+        direction TB
+        APIGW[🌐 FastAPI Gateway<br/>━━━━━━━━━━━<br/>✓ Autenticación<br/>✓ Rate Limiting<br/>✓ Load Balancing<br/>✓ Health Checks]
+    end
+
+    subgraph "Business Logic - Microservicios"
+        direction TB
+        
+        subgraph "Gestión de Activos"
+            MS1[📦 Equipos<br/>━━━━━━━<br/>Inventario<br/>Ubicaciones<br/>Movimientos<br/>Categorías]
+            MS2[🏢 Proveedores<br/>━━━━━━━<br/>Catálogo<br/>Contratos<br/>Compras]
+        end
+        
+        subgraph "Operaciones"
+            MS3[🔧 Mantenimiento<br/>━━━━━━━<br/>Preventivo<br/>Correctivo<br/>Calendario<br/>Costos]
+        end
+        
+        subgraph "Análisis y Reportes"
+            MS4[📊 Reportes<br/>━━━━━━━<br/>Dashboard<br/>Estadísticas<br/>PDF/Excel<br/>Gráficos]
+        end
+        
+        subgraph "Automatización"
+            MS5[🤖 Agentes<br/>━━━━━━━<br/>Recordatorios<br/>Alertas<br/>Notificaciones<br/>Análisis]
+        end
+    end
+
+    subgraph "Data Layer"
+        direction TB
+        PG[(🗄️ PostgreSQL<br/>━━━━━━━━━━━<br/>📋 11 Tablas<br/>🔗 Relaciones<br/>📊 Vistas<br/>⚡ Índices)]
+        
+        V1[/💾 Volumen DB<br/>Persistencia/]
+        V2[/📁 Volumen Reportes<br/>Archivos/]
+    end
+
+    subgraph "Agentes Inteligentes - Tareas Automatizadas"
+        direction LR
+        A1[⏰ Check Maintenance<br/>Verifica mantenimientos<br/>programados]
+        A2[📅 Check Obsolescence<br/>Detecta equipos<br/>obsoletos]
+        A3[⚠️ Check Warranties<br/>Alerta garantías<br/>por vencer]
+        A4[💰 Analyze Costs<br/>Analiza costos<br/>de mantenimiento]
+    end
+
+    %% Flujo principal
+    U -->|HTTPS| ST
+    ST -->|REST API| APIGW
+    
+    APIGW -->|Route /api/equipos| MS1
+    APIGW -->|Route /api/proveedores| MS2
+    APIGW -->|Route /api/mantenimientos| MS3
+    APIGW -->|Route /api/reportes| MS4
+    APIGW -->|Route /api/agents| MS5
+    
+    MS1 -->|SQL Queries| PG
+    MS2 -->|SQL Queries| PG
+    MS3 -->|SQL Queries| PG
+    MS4 -->|SQL Queries| PG
+    MS5 -->|SQL Queries| PG
+    
+    PG -.->|Persiste| V1
+    MS4 -.->|Guarda archivos| V2
+    
+    MS5 -->|Ejecuta| A1
+    MS5 -->|Ejecuta| A2
+    MS5 -->|Ejecuta| A3
+    MS5 -->|Ejecuta| A4
+    
+    A1 -.->|Crea notificaciones| PG
+    A2 -.->|Crea notificaciones| PG
+    A3 -.->|Crea notificaciones| PG
+    A4 -.->|Crea notificaciones| PG
+
+    %% Estilos
+    classDef userStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#000
+    classDef frontendStyle fill:#667eea,stroke:#333,stroke-width:3px,color:#fff
+    classDef gatewayStyle fill:#764ba2,stroke:#333,stroke-width:3px,color:#fff
+    classDef serviceStyle fill:#48bb78,stroke:#333,stroke-width:2px,color:#fff
+    classDef dbStyle fill:#f56565,stroke:#333,stroke-width:3px,color:#fff
+    classDef storageStyle fill:#ed8936,stroke:#333,stroke-width:2px,color:#fff
+    classDef agentStyle fill:#ffd700,stroke:#333,stroke-width:2px,color:#000
+
+    class U userStyle
+    class ST frontendStyle
+    class APIGW gatewayStyle
+    class MS1,MS2,MS3,MS4,MS5 serviceStyle
+    class PG dbStyle
+    class V1,V2 storageStyle
+    class A1,A2,A3,A4 agentStyle

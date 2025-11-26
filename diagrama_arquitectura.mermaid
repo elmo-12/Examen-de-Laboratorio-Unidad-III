@@ -1,0 +1,85 @@
+graph TB
+    subgraph "Capa de Presentación"
+        FE[<b>Frontend Streamlit</b><br/>Puerto 8501<br/>- Dashboard<br/>- Gestión Equipos<br/>- Reportes<br/>- Mantenimiento]
+    end
+
+    subgraph "Capa de API Gateway"
+        GW[<b>API Gateway</b><br/>Puerto 8000<br/>- Enrutamiento<br/>- Autenticación<br/>- Rate Limiting]
+    end
+
+    subgraph "Capa de Microservicios"
+        EQ[<b>Equipos Service</b><br/>Puerto 8001<br/>- CRUD Equipos<br/>- Ubicaciones<br/>- Movimientos]
+        
+        PR[<b>Proveedores Service</b><br/>Puerto 8002<br/>- CRUD Proveedores<br/>- Contratos<br/>- Compras]
+        
+        MT[<b>Mantenimiento Service</b><br/>Porto 8003<br/>- Preventivo/Correctivo<br/>- Calendario<br/>- Costos]
+        
+        RP[<b>Reportes Service</b><br/>Puerto 8004<br/>- Dashboard<br/>- Gráficos<br/>- Export PDF/Excel]
+        
+        AG[<b>Agent Service</b><br/>Puerto 8005<br/>- Recordatorios<br/>- Alertas<br/>- Notificaciones]
+    end
+
+    subgraph "Capa de Datos"
+        DB[(PostgreSQL<br/>Puerto 5432<br/><b>Base de Datos</b><br/>- ti_management)]
+    end
+
+    subgraph "Almacenamiento"
+        VOL1[/Volumen PostgreSQL<br/>postgres_data/]
+        VOL2[/Volumen Reportes<br/>reportes_data/]
+    end
+
+    subgraph "Red Docker"
+        NET[ti_network<br/>Bridge Network]
+    end
+
+    %% Conexiones Frontend
+    FE -->|HTTP Requests| GW
+
+    %% Conexiones API Gateway a Microservicios
+    GW -->|/api/equipos| EQ
+    GW -->|/api/proveedores| PR
+    GW -->|/api/mantenimientos| MT
+    GW -->|/api/reportes| RP
+    GW -->|/api/agents| AG
+
+    %% Conexiones Microservicios a Base de Datos
+    EQ -->|asyncpg| DB
+    PR -->|asyncpg| DB
+    MT -->|asyncpg| DB
+    RP -->|asyncpg| DB
+    AG -->|asyncpg| DB
+
+    %% Comunicación entre servicios
+    AG -.->|Consultas| EQ
+    AG -.->|Consultas| MT
+    RP -.->|Consultas| EQ
+    RP -.->|Consultas| MT
+
+    %% Volúmenes
+    DB -->|Persistencia| VOL1
+    RP -->|Archivos| VOL2
+
+    %% Red
+    FE -.-|Conectado a| NET
+    GW -.-|Conectado a| NET
+    EQ -.-|Conectado a| NET
+    PR -.-|Conectado a| NET
+    MT -.-|Conectado a| NET
+    RP -.-|Conectado a| NET
+    AG -.-|Conectado a| NET
+    DB -.-|Conectado a| NET
+
+    %% Estilos
+    classDef frontend fill:#667eea,stroke:#333,stroke-width:3px,color:#fff
+    classDef gateway fill:#764ba2,stroke:#333,stroke-width:3px,color:#fff
+    classDef service fill:#48bb78,stroke:#333,stroke-width:2px,color:#fff
+    classDef database fill:#f56565,stroke:#333,stroke-width:3px,color:#fff
+    classDef storage fill:#ed8936,stroke:#333,stroke-width:2px,color:#fff
+    classDef network fill:#4299e1,stroke:#333,stroke-width:2px,color:#fff
+
+    class FE frontend
+    class GW gateway
+    class EQ,PR,MT,RP,AG service
+    class DB database
+    class VOL1,VOL2 storage
+    class NET network
