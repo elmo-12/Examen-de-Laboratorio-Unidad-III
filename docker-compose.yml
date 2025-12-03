@@ -40,18 +40,12 @@ services:
     ports:
       - "${API_GATEWAY_PORT:-8000}:8000"
     depends_on:
-      postgres:
-        condition: service_healthy
-      equipos-service:
-        condition: service_started
-      proveedores-service:
-        condition: service_started
-      mantenimiento-service:
-        condition: service_started
-      reportes-service:
-        condition: service_started
-      agent-service:
-        condition: service_started
+      - postgres
+      - equipos-service
+      - proveedores-service
+      - mantenimiento-service
+      - reportes-service
+      - agent-service
     networks:
       - ti_network
     healthcheck:
@@ -70,12 +64,12 @@ services:
     ports:
       - "${EQUIPOS_PORT:-8001}:8001"
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
     networks:
       - ti_network
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      # ✅ CORREGIDO: era 8000, debe ser 8001
+      test: [ "CMD", "curl", "-f", "http://localhost:8001/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -90,8 +84,7 @@ services:
     ports:
       - "${PROVEEDORES_PORT:-8002}:8002"
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
     networks:
       - ti_network
     healthcheck:
@@ -110,8 +103,7 @@ services:
     ports:
       - "${MANTENIMIENTO_PORT:-8003}:8003"
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
     networks:
       - ti_network
     healthcheck:
@@ -132,8 +124,7 @@ services:
     volumes:
       - reportes_data:/app/reportes
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
     networks:
       - ti_network
     healthcheck:
@@ -152,8 +143,7 @@ services:
     ports:
       - "${AGENT_PORT:-8005}:8005"
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
     networks:
       - ti_network
     healthcheck:
@@ -172,8 +162,7 @@ services:
     ports:
       - "${FRONTEND_PORT:-8501}:8501"
     depends_on:
-      api-gateway:
-        condition: service_healthy
+      - api-gateway
     networks:
       - ti_network
     healthcheck:
