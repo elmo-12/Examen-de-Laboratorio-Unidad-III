@@ -267,23 +267,42 @@ with tab3:
             ["equipos", "mantenimientos", "proveedores"]
         )
         
-        if st.button("📥 Generar PDF", use_container_width=True):
+        if st.button("📥 Generar PDF", use_container_width=True, key="gen_pdf"):
             with st.spinner("Generando PDF..."):
                 try:
                     response = requests.post(
                         f"{API_URL}/api/reportes/export/pdf",
                         json={"type": tipo_reporte_pdf},
-                        timeout=30
+                        timeout=30,
+                        stream=True
                     )
                     
                     if response.status_code == 200:
-                        result = response.json()
-                        st.success(f"✅ PDF generado: {result.get('filename', 'N/A')}")
-                        st.info("El archivo se guardó en el servidor")
+                        # Obtener el nombre del archivo del header Content-Disposition
+                        content_disposition = response.headers.get('Content-Disposition', '')
+                        filename = f"{tipo_reporte_pdf}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                        if 'filename=' in content_disposition:
+                            filename = content_disposition.split('filename=')[1].strip('"')
+                        
+                        # Guardar en session_state para que persista después del rerun
+                        st.session_state['pdf_data'] = response.content
+                        st.session_state['pdf_filename'] = filename
+                        st.success(f"✅ PDF generado exitosamente")
                     else:
-                        st.error("Error al generar PDF")
+                        st.error(f"Error al generar PDF: {response.text}")
                 except Exception as e:
                     st.error(f"Error: {e}")
+        
+        # Mostrar botón de descarga si hay un PDF generado
+        if 'pdf_data' in st.session_state and 'pdf_filename' in st.session_state:
+            st.download_button(
+                label="📥 Descargar PDF",
+                data=st.session_state['pdf_data'],
+                file_name=st.session_state['pdf_filename'],
+                mime="application/pdf",
+                use_container_width=True,
+                key="download_pdf"
+            )
     
     with col2:
         st.markdown("### 📊 Exportar a Excel")
@@ -294,23 +313,42 @@ with tab3:
             ["equipos", "mantenimientos", "proveedores"]
         )
         
-        if st.button("📥 Generar Excel", use_container_width=True):
+        if st.button("📥 Generar Excel", use_container_width=True, key="gen_excel"):
             with st.spinner("Generando Excel..."):
                 try:
                     response = requests.post(
                         f"{API_URL}/api/reportes/export/excel",
                         json={"type": tipo_reporte_excel},
-                        timeout=30
+                        timeout=30,
+                        stream=True
                     )
                     
                     if response.status_code == 200:
-                        result = response.json()
-                        st.success(f"✅ Excel generado: {result.get('filename', 'N/A')}")
-                        st.info("El archivo se guardó en el servidor")
+                        # Obtener el nombre del archivo del header Content-Disposition
+                        content_disposition = response.headers.get('Content-Disposition', '')
+                        filename = f"{tipo_reporte_excel}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+                        if 'filename=' in content_disposition:
+                            filename = content_disposition.split('filename=')[1].strip('"')
+                        
+                        # Guardar en session_state para que persista después del rerun
+                        st.session_state['excel_data'] = response.content
+                        st.session_state['excel_filename'] = filename
+                        st.success(f"✅ Excel generado exitosamente")
                     else:
-                        st.error("Error al generar Excel")
+                        st.error(f"Error al generar Excel: {response.text}")
                 except Exception as e:
                     st.error(f"Error: {e}")
+        
+        # Mostrar botón de descarga si hay un Excel generado
+        if 'excel_data' in st.session_state and 'excel_filename' in st.session_state:
+            st.download_button(
+                label="📥 Descargar Excel",
+                data=st.session_state['excel_data'],
+                file_name=st.session_state['excel_filename'],
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+                key="download_excel"
+            )
 
 with tab4:
     st.subheader("🔍 Análisis Avanzado")

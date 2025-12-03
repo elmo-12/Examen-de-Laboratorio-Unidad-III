@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 from typing import Optional
 import asyncpg
 import os
@@ -278,6 +278,17 @@ async def export_excel(report_data: dict):
                 JOIN equipos e ON m.equipo_id = e.id
                 ORDER BY m.fecha_programada DESC
             """
+        elif report_type == "proveedores":
+            query = """
+                SELECT p.id, p.nombre, p.contacto, p.email, p.telefono,
+                       COUNT(DISTINCT c.id) as total_contratos,
+                       COALESCE(SUM(e.costo_compra), 0) as total_comprado
+                FROM proveedores p
+                LEFT JOIN contratos c ON p.id = c.proveedor_id
+                LEFT JOIN equipos e ON c.id = e.contrato_id
+                GROUP BY p.id, p.nombre, p.contacto, p.email, p.telefono
+                ORDER BY p.nombre
+            """
         else:
             raise HTTPException(status_code=400, detail="Tipo de reporte no válido")
         
@@ -285,11 +296,20 @@ async def export_excel(report_data: dict):
             rows = await conn.fetch(query)
             df = pd.DataFrame([dict(row) for row in rows])
             
-            filename = f"/app/reportes/{report_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-            os.makedirs("/app/reportes", exist_ok=True)
-            df.to_excel(filename, index=False)
+            # Generar Excel en memoria
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='Reporte')
+            output.seek(0)
             
-            return {"filename": filename, "message": "Excel exportado exitosamente"}
+            # Nombre del archivo para descarga
+            filename = f"{report_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            
+            return StreamingResponse(
+                io.BytesIO(output.read()),
+                media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al exportar: {str(e)}")
@@ -300,10 +320,9 @@ async def export_pdf(report_data: dict):
     pool = await get_db_pool()
     
     try:
-        filename = f"/app/reportes/{report_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        os.makedirs("/app/reportes", exist_ok=True)
-        
-        doc = SimpleDocTemplate(filename, pagesize=A4)
+        # Crear PDF en memoria
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
         elements = []
         styles = getSampleStyleSheet()
         
@@ -326,6 +345,29 @@ async def export_pdf(report_data: dict):
                 LIMIT 50
             """
             headers = ['Código', 'Nombre', 'Categoría', 'Estado', 'Ubicación']
+        elif report_type == "mantenimientos":
+            query = """
+                SELECT m.id, m.tipo, m.fecha_programada, m.fecha_realizada,
+                       e.codigo_inventario, m.estado, m.costo
+                FROM mantenimientos m
+                JOIN equipos e ON m.equipo_id = e.id
+                ORDER BY m.fecha_programada DESC
+                LIMIT 50
+            """
+            headers = ['ID', 'Tipo', 'Fecha Prog.', 'Fecha Real.', 'Equipo', 'Estado', 'Costo']
+        elif report_type == "proveedores":
+            query = """
+                SELECT p.id, p.nombre, p.contacto, p.email, p.telefono,
+                       COUNT(DISTINCT c.id) as total_contratos
+                FROM proveedores p
+                LEFT JOIN contratos c ON p.id = c.proveedor_id
+                GROUP BY p.id, p.nombre, p.contacto, p.email, p.telefono
+                ORDER BY p.nombre
+                LIMIT 50
+            """
+            headers = ['ID', 'Nombre', 'Contacto', 'Email', 'Teléfono', 'Contratos']
+        else:
+            raise HTTPException(status_code=400, detail="Tipo de reporte no válido")
         
         async with pool.acquire() as conn:
             rows = await conn.fetch(query)
@@ -349,8 +391,16 @@ async def export_pdf(report_data: dict):
             elements.append(table)
         
         doc.build(elements)
+        buffer.seek(0)
         
-        return {"filename": filename, "message": "PDF exportado exitosamente"}
+        # Nombre del archivo para descarga
+        filename = f"{report_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        
+        return StreamingResponse(
+            io.BytesIO(buffer.read()),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al exportar: {str(e)}")

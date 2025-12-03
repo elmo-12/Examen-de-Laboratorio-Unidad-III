@@ -123,6 +123,7 @@ services:
       - "${REPORTES_PORT:-8004}:8004"
     volumes:
       - reportes_data:/app/reportes
+      - ./scripts:/app/scripts:ro
     depends_on:
       - postgres
     networks:
