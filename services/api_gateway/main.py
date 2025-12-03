@@ -263,6 +263,8 @@ async def proxy_mantenimientos(request: Request, path: Optional[str] = None):
 @app.api_route("/api/reportes", methods=["GET"])
 async def proxy_reportes(request: Request, path: Optional[str] = None):
     """Proxy para el servicio de reportes"""
+    from fastapi.responses import StreamingResponse
+    
     url = f"{REPORTES_SERVICE_URL}"
     if path:
         url = f"{REPORTES_SERVICE_URL}/{path}"
@@ -276,8 +278,22 @@ async def proxy_reportes(request: Request, path: Optional[str] = None):
         else:
             response = await client.get(url, params=params)
         
+        # Si es un archivo binario (PDF o Excel), devolver como StreamingResponse
+        content_type = response.headers.get("content-type", "")
+        if "application/pdf" in content_type or "application/vnd.openxmlformats-officedocument" in content_type or "application/vnd.ms-excel" in content_type:
+            headers = {}
+            if "content-disposition" in response.headers:
+                headers["Content-Disposition"] = response.headers["content-disposition"]
+            
+            return StreamingResponse(
+                iter([response.content]),
+                media_type=content_type,
+                headers=headers
+            )
+        
+        # Para respuestas JSON normales
         return JSONResponse(
-            content=response.json() if response.headers.get("content-type", "").startswith("application/json") else {"data": response.text},
+            content=response.json() if content_type.startswith("application/json") else {"data": response.text},
             status_code=response.status_code
         )
     except httpx.RequestError as e:

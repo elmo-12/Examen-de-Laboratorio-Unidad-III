@@ -129,3 +129,5 @@ Puedes modificar los datos en `seed_db.py`:
 - Modificar ubicaciones en `UBICACIONES`
 - Ajustar cantidades de equipos por categoría
 
+
+

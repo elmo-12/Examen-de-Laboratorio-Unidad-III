@@ -300,18 +300,23 @@ async def export_excel(report_data: dict):
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df.to_excel(writer, index=False, sheet_name='Reporte')
-            output.seek(0)
+            
+            # IMPORTANTE: No hacer seek después de cerrar el writer
+            excel_data = output.getvalue()
             
             # Nombre del archivo para descarga
             filename = f"{report_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
             
             return StreamingResponse(
-                io.BytesIO(output.read()),
+                io.BytesIO(excel_data),
                 media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 headers={"Content-Disposition": f"attachment; filename={filename}"}
             )
     
     except Exception as e:
+        import traceback
+        print(f"Error al exportar Excel: {str(e)}")
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error al exportar: {str(e)}")
 
 @app.post("/export/pdf")
@@ -391,18 +396,23 @@ async def export_pdf(report_data: dict):
             elements.append(table)
         
         doc.build(elements)
-        buffer.seek(0)
+        
+        # IMPORTANTE: Obtener el contenido del buffer antes de crear un nuevo BytesIO
+        pdf_data = buffer.getvalue()
         
         # Nombre del archivo para descarga
         filename = f"{report_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         
         return StreamingResponse(
-            io.BytesIO(buffer.read()),
+            io.BytesIO(pdf_data),
             media_type="application/pdf",
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
     
     except Exception as e:
+        import traceback
+        print(f"Error al exportar PDF: {str(e)}")
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error al exportar: {str(e)}")
 
 if __name__ == "__main__":
