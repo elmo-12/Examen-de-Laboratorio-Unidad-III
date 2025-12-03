@@ -2,7 +2,6 @@ services:
   # Base de datos PostgreSQL
   postgres:
     image: postgres:15-alpine
-    container_name: ti-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-ti_management}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -31,7 +30,6 @@ services:
     build:
       context: ./services/api_gateway
       dockerfile: Dockerfile
-    container_name: ti-api-gateway
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-ti_management}
       EQUIPOS_SERVICE_URL: http://equipos-service:8001
@@ -67,7 +65,6 @@ services:
     build:
       context: ./services/equipos_service
       dockerfile: Dockerfile
-    container_name: ti-equipos-service
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-ti_management}
     ports:
@@ -88,7 +85,6 @@ services:
     build:
       context: ./services/proveedores_service
       dockerfile: Dockerfile
-    container_name: ti-proveedores-service
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-ti_management}
     ports:
@@ -109,7 +105,6 @@ services:
     build:
       context: ./services/mantenimiento_service
       dockerfile: Dockerfile
-    container_name: ti-mantenimiento-service
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-ti_management}
     ports:
@@ -130,7 +125,6 @@ services:
     build:
       context: ./services/reportes_service
       dockerfile: Dockerfile
-    container_name: ti-reportes-service
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-ti_management}
     ports:
@@ -153,7 +147,6 @@ services:
     build:
       context: ./services/agent_service
       dockerfile: Dockerfile
-    container_name: ti-agent-service
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-ti_management}
     ports:
@@ -174,7 +167,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: ti-frontend
     environment:
       API_GATEWAY_URL: http://api-gateway:8000
     ports:
@@ -198,4 +190,5 @@ volumes:
 
 networks:
   ti_network:
-    driver: bridge
+    driver: overlay
+    attachable: true
